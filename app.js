@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id);const APP_VERSION='v2.16.0';let pdf=null,worker=null,abort=false;const MAX_BYTES=15*1024*1024,MAX_PAGES=20;
+const $=id=>document.getElementById(id);const APP_VERSION='v2.17.0';let pdf=null,worker=null,abort=false;const MAX_BYTES=15*1024*1024,MAX_PAGES=20;
 const known={"2026-7chinjou.pdf":{number:'送付8-7',committee:'企画総務委員会',date:'令和8年2月20日',title:'新宿区において顕在化した事例を受けて、政党機関紙の庁舎内勧誘行為に関する早期の実態把握と再発防止を求める陳情'},"2026-9chinjou.pdf":{number:'送付8-9',committee:'企画総務委員会',date:'令和8年3月11日',title:'アキバ文化を守るためにAIによる日本のIP侵害への対策を求める陳情'},"2026-3chinjou.pdf":{number:'送付8-3',committee:'企画総務委員会',date:'令和8年2月9日',title:'陳情書　旧永田町小学校・校舎を残して下さい。'}};
 function status(s){$('status').textContent=s}function progress(v){$('bar').style.width=Math.max(0,Math.min(100,v))+'%'}
 function libs(){if(!window.pdfjsLib||!window.Tesseract||!window.docx)throw Error('必要なライブラリが読み込めません。インターネット接続と広告ブロック設定を確認してください。');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
@@ -33,7 +33,7 @@ function txt(s,bold=false,size=20){return new docx.TextRun({text:String(s||''),b
 // row height, so the bottom border stays near the printable page bottom.
 // Pagination is conservative and deliberately editable; final visual check is required.
 function makeParagraph(s,options={}){
-  return new docx.Paragraph({children:[new docx.TextRun({text:s||' ',font:'Yu Mincho',size:20,bold:!!options.bold})],spacing:{before:0,after:options.after??35,line:290},keepTogether:true});
+  return new docx.Paragraph({children:[new docx.TextRun({text:s||' ',font:'Yu Mincho',size:20,bold:!!options.bold})],spacing:{before:0,after:options.after??0,line:260},keepTogether:false});
 }
 function splitTextLines(text,maxUnits=46){
   // Approximate Japanese fullwidth characters as 1 unit and Latin as 0.55.
@@ -47,7 +47,7 @@ function splitTextLines(text,maxUnits=46){
   }
   return out;
 }
-function paginateBody(text,firstLines=27,otherLines=39){
+function paginateBody(text,firstLines=22,otherLines=30){
   let lines=splitTextLines(text),pages=[],capacity=firstLines;
   while(lines.length){pages.push(lines.splice(0,capacity));capacity=otherLines;}
   return pages.length?pages:[['']];
@@ -79,7 +79,7 @@ function committeeTable(){
 }
 function bodyFrame(lines, height){
  const D=docx,b={style:D.BorderStyle.SINGLE,size:7,color:'222222'};
- return new D.Table({width:{size:9800,type:D.WidthType.DXA},columnWidths:[9800],layout:D.TableLayoutType.FIXED,rows:[new D.TableRow({cantSplit:true,height:{value:height,rule:D.HeightRule.EXACT},children:[new D.TableCell({borders:{top:b,bottom:b,left:b,right:b},margins:{top:140,bottom:110,left:150,right:150},children:lines.map(t=>makeParagraph(t))})]})]});
+ return new D.Table({width:{size:9800,type:D.WidthType.DXA},columnWidths:[9800],layout:D.TableLayoutType.FIXED,rows:[new D.TableRow({cantSplit:false,height:{value:height,rule:D.HeightRule.ATLEAST},children:[new D.TableCell({borders:{top:b,bottom:b,left:b,right:b},margins:{top:100,bottom:90,left:150,right:150},children:lines.map(t=>makeParagraph(t))})]})]});
 }
 $('download').onclick=async()=>{
  try{
@@ -91,7 +91,7 @@ $('download').onclick=async()=>{
   const full=($('purpose').value.trim()?'【趣　旨】\n'+$('purpose').value.trim()+'\n\n':'')+'【理　由】\n'+body;
   // Conservative line counts: keep content inside fixed frames rather than allowing Word
   // to spill a table row to the next page. Each physical page is a separate section.
-  const pages=paginateBody(full,27,39);
+  const pages=paginateBody(full,22,30);
   const page={size:{width:11906,height:16838},margin:{top:680,right:1053,bottom:720,left:1053}};
   const sections=pages.map((lines,i)=>{
    const children=[];
@@ -101,19 +101,19 @@ $('download').onclick=async()=>{
     children.push(metadataTable());
     children.push(new D.Paragraph({text:'',spacing:{after:0},run:{size:2}}));
    }
-   children.push(bodyFrame(lines,i===0?13100:15000));
+   children.push(bodyFrame(lines,i===0?10400:13800));
    return {properties:{type:i===0?D.SectionType.CONTINUOUS:D.SectionType.NEXT_PAGE,page},children};
   });
-  const wordDocument=new D.Document({creator:'議会文書表 変換ラボ v2.16（非公式実験版）',title:heading,sections});
+  const wordDocument=new D.Document({creator:'議会文書表 変換ラボ v2.17（非公式実験版）',title:heading,sections});
   const blob=await D.Packer.toBlob(wordDocument);
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-  a.download='陳情文書表_v2_6_'+($('number').value||'変換結果').replace(/[^\w\u3040-\u30ff\u3400-\u9fff-]/g,'_')+'.docx';
+  a.download='陳情文書表_v2_17_'+($('number').value||'変換結果').replace(/[^\w\u3040-\u30ff\u3400-\u9fff-]/g,'_')+'.docx';
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
-  $('outstatus').textContent=`v2.16：Wordを生成しました（${pages.length}ページ想定）。下枠・ページ数をWordで確認してください。`;
+  $('outstatus').textContent=`v2.17：Wordを生成しました（${pages.length}ページ想定・本文${full.length}文字）。行の欠落がないか、原文とWordの全ページを照合してください。`;
  }catch(e){$('outstatus').textContent='出力できませんでした：'+e.message;}
 };
 $('clear').onclick=()=>{if(!confirm('入力内容をすべて消去しますか？'))return;for(let k of ['number','date','title','purpose','bodytext'])$(k).value='';$('petitioner').value='提出者 1名';$('committee').value='企画総務委員会';$('outstatus').textContent='';status('入力をクリアしました。')};
-window.addEventListener('load',()=>{if($('buildVersion'))$('buildVersion').textContent='プログラム版：'+APP_VERSION+'（読み込み済み）';try{libs();status('v2.16 準備完了。PDFを選択してください。')}catch(e){status(e.message)}});
+window.addEventListener('load',()=>{if($('buildVersion'))$('buildVersion').textContent='プログラム版：'+APP_VERSION+'（読み込み済み）';try{libs();status('v2.17 準備完了。PDFを選択してください。')}catch(e){status(e.message)}});
 
 $('detectStamps').onclick=async()=>{try{libs();const file=$('file').files[0];if(!file)throw Error('PDFを選択してください');$('detectStamps').disabled=true;$('stampStatus').textContent='収受印候補を検出中…';const data=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:new Uint8Array(data)}).promise;await StampMask.review(doc,render);$('stampStatus').textContent='候補を確認してチェックを入れるか、画像上をドラッグして除外範囲を指定してください。';}catch(e){$('stampStatus').textContent='検出エラー：'+e.message}finally{$('detectStamps').disabled=false}};
 $('clearStamps').onclick=()=>{StampMask.reset();$('stampStatus').textContent='除外範囲をクリアしました。'};
