@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id);const APP_VERSION='v2.12.0';let pdf=null,worker=null,abort=false;const MAX_BYTES=15*1024*1024,MAX_PAGES=20;
+const $=id=>document.getElementById(id);const APP_VERSION='v2.14.0';let pdf=null,worker=null,abort=false;const MAX_BYTES=15*1024*1024,MAX_PAGES=20;
 const known={"2026-7chinjou.pdf":{number:'送付8-7',committee:'企画総務委員会',date:'令和8年2月20日',title:'新宿区において顕在化した事例を受けて、政党機関紙の庁舎内勧誘行為に関する早期の実態把握と再発防止を求める陳情'},"2026-9chinjou.pdf":{number:'送付8-9',committee:'企画総務委員会',date:'令和8年3月11日',title:'アキバ文化を守るためにAIによる日本のIP侵害への対策を求める陳情'},"2026-3chinjou.pdf":{number:'送付8-3',committee:'企画総務委員会',date:'令和8年2月9日',title:'陳情書　旧永田町小学校・校舎を残して下さい。'}};
 function status(s){$('status').textContent=s}function progress(v){$('bar').style.width=Math.max(0,Math.min(100,v))+'%'}
 function libs(){if(!window.pdfjsLib||!window.Tesseract||!window.docx)throw Error('必要なライブラリが読み込めません。インターネット接続と広告ブロック設定を確認してください。');pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'}
@@ -104,16 +104,16 @@ $('download').onclick=async()=>{
    children.push(bodyFrame(lines,i===0?13100:15000));
    return {properties:{type:i===0?D.SectionType.CONTINUOUS:D.SectionType.NEXT_PAGE,page},children};
   });
-  const wordDocument=new D.Document({creator:'議会文書表 変換ラボ v2.12（非公式実験版）',title:heading,sections});
+  const wordDocument=new D.Document({creator:'議会文書表 変換ラボ v2.14（非公式実験版）',title:heading,sections});
   const blob=await D.Packer.toBlob(wordDocument);
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
   a.download='陳情文書表_v2_6_'+($('number').value||'変換結果').replace(/[^\w\u3040-\u30ff\u3400-\u9fff-]/g,'_')+'.docx';
   document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
-  $('outstatus').textContent=`v2.12：Wordを生成しました（${pages.length}ページ想定）。下枠・ページ数をWordで確認してください。`;
+  $('outstatus').textContent=`v2.14：Wordを生成しました（${pages.length}ページ想定）。下枠・ページ数をWordで確認してください。`;
  }catch(e){$('outstatus').textContent='出力できませんでした：'+e.message;}
 };
 $('clear').onclick=()=>{if(!confirm('入力内容をすべて消去しますか？'))return;for(let k of ['number','date','title','purpose','bodytext'])$(k).value='';$('petitioner').value='提出者 1名';$('committee').value='企画総務委員会';$('outstatus').textContent='';status('入力をクリアしました。')};
-window.addEventListener('load',()=>{if($('buildVersion'))$('buildVersion').textContent='プログラム版：'+APP_VERSION+'（読み込み済み）';try{libs();status('v2.12 準備完了。PDFを選択してください。')}catch(e){status(e.message)}});
+window.addEventListener('load',()=>{if($('buildVersion'))$('buildVersion').textContent='プログラム版：'+APP_VERSION+'（読み込み済み）';try{libs();status('v2.14 準備完了。PDFを選択してください。')}catch(e){status(e.message)}});
 
 $('detectStamps').onclick=async()=>{try{libs();const file=$('file').files[0];if(!file)throw Error('PDFを選択してください');$('detectStamps').disabled=true;$('stampStatus').textContent='収受印候補を検出中…';const data=await file.arrayBuffer();const doc=await pdfjsLib.getDocument({data:new Uint8Array(data)}).promise;await StampMask.review(doc,render);$('stampStatus').textContent='候補を確認してチェックを入れるか、画像上をドラッグして除外範囲を指定してください。';}catch(e){$('stampStatus').textContent='検出エラー：'+e.message}finally{$('detectStamps').disabled=false}};
 $('clearStamps').onclick=()=>{StampMask.reset();$('stampStatus').textContent='除外範囲をクリアしました。'};
