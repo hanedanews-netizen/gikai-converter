@@ -7,6 +7,8 @@ window.StampMask=(()=>{
  const STAMP_DIAMETER_RATIO=0.082;
  // Detection remains based on the outer circular ring; masking is 50% larger.
  const AUTO_MASK_SCALE=1.50;
+ // Shift only the automatic circular-stamp OCR mask upward by roughly one text character.
+ const AUTO_MASK_UP_SHIFT=0.018; // 1.8% of PDF page height
  const MIN_RATIO=0.068,MAX_RATIO=0.100;
  const sizeStatus=()=>document.getElementById('stampSizeStatus');
  function calibration(){return STAMP_DIAMETER_RATIO;}
@@ -19,8 +21,8 @@ window.StampMask=(()=>{
   // Only enlarge detected circular stamps. Manually drawn rectangles stay exact.
   if(b.kind!=='丸')return {...b};
   const cx=b.x+b.w/2,cy=b.y+b.h/2;
-  const x0=clamp(cx-b.w*AUTO_MASK_SCALE/2,0,1),y0=clamp(cy-b.h*AUTO_MASK_SCALE/2,0,1);
-  const x1=clamp(cx+b.w*AUTO_MASK_SCALE/2,0,1),y1=clamp(cy+b.h*AUTO_MASK_SCALE/2,0,1);
+  const x0=clamp(cx-b.w*AUTO_MASK_SCALE/2,0,1),y0=clamp(cy-b.h*AUTO_MASK_SCALE/2-AUTO_MASK_UP_SHIFT,0,1);
+  const x1=clamp(cx+b.w*AUTO_MASK_SCALE/2,0,1),y1=clamp(cy+b.h*AUTO_MASK_SCALE/2-AUTO_MASK_UP_SHIFT,0,1);
   return {...b,x:x0,y:y0,w:x1-x0,h:y1-y0};
  }
  function apply(canvas,boxes){const ctx=canvas.getContext('2d');ctx.save();ctx.fillStyle='#fff';for(const raw of boxes){const b=expandedMaskBox(raw);ctx.fillRect(Math.floor(b.x*canvas.width),Math.floor(b.y*canvas.height),Math.ceil(b.w*canvas.width),Math.ceil(b.h*canvas.height));}ctx.restore()}
@@ -63,7 +65,7 @@ window.StampMask=(()=>{
   const list=document.createElement('div');list.className='stamp-list';wrap.append(list);root.append(wrap);
   const active=[];selected.set(pageNo,active);let manual=[];let draft=null;
   function draw(){overlay.replaceChildren();for(const raw of active){const b=expandedMaskBox(raw);const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',b.x*1000);r.setAttribute('y',b.y*1000);r.setAttribute('width',b.w*1000);r.setAttribute('height',b.h*1000);r.setAttribute('class',b.kind==='手動'?'stamp-manual':'stamp-mark');overlay.append(r)}if(draft){const r=document.createElementNS('http://www.w3.org/2000/svg','rect');for(const [key,val] of Object.entries({x:draft.x*1000,y:draft.y*1000,width:draft.w*1000,height:draft.h*1000}))r.setAttribute(key,val);r.setAttribute('class','stamp-draft');overlay.append(r)}}
-  detected.forEach((b,i)=>{const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';label.append(check);label.append(document.createTextNode(` ${b.kind}型候補 ${i+1}（信頼度目安 ${Math.round(b.score*100)}%／除外枠は直径の約1.5倍）`));list.append(label);check.onchange=()=>{if(check.checked)active.push(b);else{const ix=active.indexOf(b);if(ix>=0)active.splice(ix,1)}draw()}});
+  detected.forEach((b,i)=>{const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';label.append(check);label.append(document.createTextNode(` ${b.kind}型候補 ${i+1}（信頼度目安 ${Math.round(b.score*100)}%／除外枠は直径の約1.5倍・約1文字分上へ）`));list.append(label);check.onchange=()=>{if(check.checked)active.push(b);else{const ix=active.indexOf(b);if(ix>=0)active.splice(ix,1)}draw()}});
   if(!detected.length){const span=document.createElement('span');span.textContent='候補なし。画像上でドラッグして手動指定できます。';list.append(span)}
   const clear=document.createElement('button');clear.type='button';clear.className='secondary';clear.textContent='このページの手動枠を消す';clear.onclick=()=>{for(const b of manual){const ix=active.indexOf(b);if(ix>=0)active.splice(ix,1)}manual=[];draw()};wrap.append(clear);
   let start=null;
