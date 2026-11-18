@@ -37,4 +37,8 @@ OpenAI APIを一切呼ばないため、公開アプリの利用者によって�
 
 ## v2.1 案内文の更新
 
-STEP 1に、千代田区議会の陳情一覧（https://gikai-chiyoda-tokyo.jp/minasan/seigan/chinjou/?year=2026#chinjou-2026-15）から任意のPDFをダウンロードして試せる旨とリンクを追加しました。従来の3件のサンプルリンクも残しています。OCRやWord出力処理はv2から変更していません。
+STEP 1に、千代田区議会の陳情一覧（https://gikai-chiyoda-tokyo.jp/minasan/seigan/chinjou/?year=2026）から任意のPDFをダウンロードして試せる旨とリンクを追加しました。従来の3件のサンプルリンクも残しています。OCRやWord出力処理はv2から変更していません。
+
+
+## v2.2 変更点
+STEP 1の千代田区議会一覧リンクを https://gikai-chiyoda-tokyo.jp/minasan/seigan/chinjou/?year=2026 に変更。任意の陳情書PDFをダウンロードして利用できることを明記。変換処理はv2.1から変更なし。
