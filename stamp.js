@@ -8,7 +8,7 @@ window.StampMask=(()=>{
  // Detection remains based on the outer circular ring; masking is 50% larger.
  const AUTO_MASK_SCALE=1.50;
  // Shift only the automatic circular-stamp OCR mask upward by roughly one text character.
- const AUTO_MASK_UP_SHIFT=0.018; // 1.8% of PDF page height
+ const AUTO_MASK_UP_SHIFT=0.0135; // 1.35% of PDF page height
  const MIN_RATIO=0.068,MAX_RATIO=0.100;
  const sizeStatus=()=>document.getElementById('stampSizeStatus');
  function calibration(){return STAMP_DIAMETER_RATIO;}
