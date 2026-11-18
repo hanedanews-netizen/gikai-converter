@@ -2,43 +2,45 @@
 /* Geometric stamp candidates are advisory only. User must explicitly select. */
 window.StampMask=(()=>{
  const selected=new Map();
+ // Measured from three official Chiyoda petition PDFs: 2026-3, 2026-7, 2026-9, page 2.
+ // Approximate round stamp outer diameter 8.2% of A4 page width; allow scanning/resizing variance.
+ const STAMP_DIAMETER_RATIO=0.082;
+ const MIN_RATIO=0.068,MAX_RATIO=0.100;
+ const sizeStatus=()=>document.getElementById('stampSizeStatus');
+ function calibration(){return STAMP_DIAMETER_RATIO;}
+ function clearCalibration(){if(sizeStatus())sizeStatus().textContent='収受印の想定直径：約8.2%（PDF幅比）。アプリ内に設定済み。';}
  const reviewEl=()=>document.getElementById('stampReview');
  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
  function reset(){selected.clear();if(reviewEl())reviewEl().replaceChildren()}
  function get(page){return (selected.get(page)||[]).map(x=>({...x}))}
  function apply(canvas,boxes){const ctx=canvas.getContext('2d');ctx.save();ctx.fillStyle='#fff';for(const b of boxes)ctx.fillRect(Math.floor(b.x*canvas.width),Math.floor(b.y*canvas.height),Math.ceil(b.w*canvas.width),Math.ceil(b.h*canvas.height));ctx.restore()}
  function candidates(canvas){
-  // Limit analysis to the upper 55%: stamps elsewhere can be manually marked.
-  const w=600,h=Math.round(canvas.height*600/canvas.width),cv=document.createElement('canvas');cv.width=w;cv.height=h;
-  const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(canvas,0,0,w,h);
-  const data=cx.getImageData(0,0,w,h).data;const ink=new Uint8Array(w*h);
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4,r=data[i],g=data[i+1],b=data[i+2];ink[y*w+x]=(Math.min(r,g,b)<155 || (r>g*1.35&&r>b*1.2&&r<240))?1:0}
+  // Chiyoda's circular reception stamp in the three reference PDFs is at the bottom of the petition page.
+  // Analyze the bottom 32% only. Normalized dimensions make the rule independent of scan DPI.
+  const w=600,h=Math.round(canvas.height*600/canvas.width),cv=document.createElement('canvas');
+  cv.width=w;cv.height=h;const ctx=cv.getContext('2d',{willReadFrequently:true});ctx.drawImage(canvas,0,0,w,h);
+  const d=ctx.getImageData(0,0,w,h).data,ink=new Uint8Array(w*h);
+  for(let i=0;i<ink.length;i++){const j=i*4,r=d[j],g=d[j+1],b=d[j+2];ink[i]=(Math.min(r,g,b)<175)?1:0;}
   const at=(x,y)=>x>=0&&x<w&&y>=0&&y<h?ink[y*w+x]:0;
-  function densityH(x,y,len){let sum=0;for(let k=0;k<len;k+=2)sum+=at(x+k,y);return sum/Math.ceil(len/2)}
-  function densityV(x,y,len){let sum=0;for(let k=0;k<len;k+=2)sum+=at(x,y+k);return sum/Math.ceil(len/2)}
-  const found=[];
-  // Rectangle candidates: long top/bottom horizontal lines plus side strokes.
-  for(let y=8;y<Math.min(h*.55,420);y+=3){for(let x=10;x<w-65;x+=6){
-   if(!at(x,y))continue;
-   for(let side=54;side<=180;side+=14){if(x+side>=w)break;
-    const top=densityH(x,y,side);if(top<.72)continue;
-    for(let ht=36;ht<=Math.min(150,side*1.5);ht+=12){if(y+ht>=h*.62)break;
-     const bot=densityH(x,y+ht,side),left=densityV(x,y,ht),right=densityV(x+side,y,ht);
-     if(bot>.66&&left>.54&&right>.54){const score=(top+bot+left+right)/4;
-      if(score>.72)found.push({x:x/w,y:y/h,w:side/w,h:ht/h,kind:'四角',score});}
+  const angles=Array.from({length:48},(_,i)=>i*Math.PI/24),found=[];
+  const radii=[];for(let r=Math.round(w*MIN_RATIO/2);r<=Math.round(w*MAX_RATIO/2);r+=2)radii.push(r);
+  const y0=Math.round(h*.68),y1=Math.round(h*.98);
+  for(let cy=y0;cy<y1;cy+=4)for(let cx=35;cx<w-35;cx+=4){
+   for(const rad of radii){if(cx-rad<0||cx+rad>=w||cy-rad<0||cy+rad>=h)continue;
+    let hits=0;for(const a of angles){const xx=cx+Math.cos(a)*rad,yy=cy+Math.sin(a)*rad;
+     if(at(Math.round(xx),Math.round(yy))||at(Math.round(cx+Math.cos(a)*(rad-2)),Math.round(cy+Math.sin(a)*(rad-2)))||at(Math.round(cx+Math.cos(a)*(rad+2)),Math.round(cy+Math.sin(a)*(rad+2))))hits++;
     }
-   }
-  }}
-  // Circle candidates: radial samples over a narrow annulus, tolerant of imperfect ink.
-  const angles=Array.from({length:32},(_,i)=>i*Math.PI/16);
-  for(let cy=32;cy<Math.min(h*.52,400);cy+=9)for(let cx0=34;cx0<w-34;cx0+=9){
-   for(let rad=21;rad<=80;rad+=6){if(cx0-rad<0||cx0+rad>=w||cy-rad<0||cy+rad>=h*.62)continue;
-    let hits=0;for(const a of angles){let yes=false;for(const rr of [rad-2,rad,rad+2]){const xx=Math.round(cx0+Math.cos(a)*rr),yy=Math.round(cy+Math.sin(a)*rr);if(at(xx,yy)){yes=true;break}}if(yes)hits++}
-    const score=hits/angles.length;if(score>=.81)found.push({x:(cx0-rad)/w,y:(cy-rad)/h,w:2*rad/w,h:2*rad/h,kind:'丸',score});
+    const score=hits/angles.length;
+    // Require a mostly complete circular outline; text alone generally does not pass this threshold.
+    if(score>=.78)found.push({x:(cx-rad-4)/w,y:(cy-rad-4)/h,w:(rad*2+8)/w,h:(rad*2+8)/h,kind:'丸',score});
    }
   }
   found.sort((a,b)=>b.score-a.score);
-  const keep=[];for(const b of found){const cx=b.x+b.w/2,cy=b.y+b.h/2;if(keep.some(k=>Math.abs(cx-k.x-k.w/2)<Math.min(b.w,k.w)*.38&&Math.abs(cy-k.y-k.h/2)<Math.min(b.h,k.h)*.38))continue;keep.push(b);if(keep.length>=8)break}
+  const keep=[];
+  for(const b of found){const bx=b.x+b.w/2,by=b.y+b.h/2;
+   if(keep.some(k=>Math.hypot((bx-k.x-k.w/2)*w,(by-k.y-k.h/2)*h)<24))continue;
+   keep.push(b);if(keep.length>=5)break;
+  }
   return keep;
  }
  async function review(pdf,render){reset();const root=reviewEl();for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
@@ -61,5 +63,5 @@ window.StampMask=(()=>{
   surface.addEventListener('pointerup',e=>{if(!start)return;const end=pt(e);const b={x:Math.min(start.x,end.x),y:Math.min(start.y,end.y),w:Math.abs(start.x-end.x),h:Math.abs(start.y-end.y),kind:'手動'};start=null;draft=null;if(b.w>.01&&b.h>.01){active.push(b);manual.push(b)}draw()});
   draw();
  }}
- return {reset,get,apply,review,candidates};
+ return {reset,get,apply,review,candidates,calibration,clearCalibration};
 })();
