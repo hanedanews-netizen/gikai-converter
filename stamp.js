@@ -9,6 +9,10 @@ window.StampMask=(()=>{
  const AUTO_MASK_SCALE=1.50;
  // Each PDF page has its own selected rectangular mask size.
  const MASK_PRESETS=[
+  {id:'tiny',label:'極小：円の0.65倍 × 0.65倍',w:0.65,h:0.65},
+  {id:'very-small',label:'かなり小：円の0.80倍 × 0.80倍',w:0.80,h:0.80},
+  {id:'smaller',label:'小さめ：円の0.95倍 × 0.95倍',w:0.95,h:0.95},
+  {id:'small-plus',label:'やや小：円の1.05倍 × 1.05倍',w:1.05,h:1.05},
   {id:'small',label:'小：円の1.15倍 × 1.15倍',w:1.15,h:1.15},
   {id:'medium',label:'中：円の1.35倍 × 1.35倍',w:1.35,h:1.35},
   {id:'standard',label:'標準：円の1.50倍 × 1.50倍',w:1.50,h:1.50},
@@ -81,7 +85,7 @@ window.StampMask=(()=>{
   const maskSelect=document.createElement('select');maskSelect.setAttribute('aria-label',`${pageNo}ページ目のOCR除外枠サイズ`);
   for(const option of MASK_PRESETS){const el=document.createElement('option');el.value=option.id;el.textContent=option.label;if(option.id==='standard')el.selected=true;maskSelect.append(el)}
   maskLabel.append(maskSelect);maskControls.append(maskLabel);
-  const maskHelp=document.createElement('p');maskHelp.className='muted';maskHelp.textContent='① 上で丸型候補にチェック → ② サイズを選択。赤枠が即座に変わります。本文に重なる場合は小さくしてください。手動で描いた枠は変更されません。';maskControls.append(maskHelp);
+  const maskHelp=document.createElement('p');maskHelp.className='muted';maskHelp.textContent='① 上で丸型候補にチェック → ② サイズを選択。赤枠が即座に変わります。本文に重なる場合は小さくしてください。手動で描いた枠は変更されません。極小サイズは収受印の一部が残る可能性があります。';maskControls.append(maskHelp);
   list.after(maskControls);
   maskSelect.onchange=()=>{preset=MASK_PRESETS.find(x=>x.id===maskSelect.value)||MASK_PRESETS[2];for(const b of active){if(b.kind==='丸'){b.maskW=preset.w;b.maskH=preset.h}}draw()};
 
